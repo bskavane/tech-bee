@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Script: Log Error Collector with Cron
+# Author: Bhavin Kawane
+# Description: This script allows you to create a separate script for copying log files containing the word 'error' from /var/log to /tmp.
+# Define color codes
+GREEN='\033[0;32m'  # Green text
+NC='\033[0m'        # No color
+BLUE='\033[0;34m'   # Blue text
+# Welcome message
+echo -e "${GREEN}Welcome to the Log Error Collector script!${NC}"
+
+# Prompt the user for the source directory, defaulting to /var/log
+read -p "Enter the source directory (default: /var/log): " source_dir
+source_dir=${source_dir:-"/var/log"}
+destination_dir="/tmp"
+
+# Check if the destination directory exists, create it if not
+if [ ! -d "$destination_dir" ]; then
+    mkdir -p "$destination_dir"
+    echo "Created directory: $destination_dir"
+fi
+
+# Create a separate script for copying log files
+copy_script="#!/bin/bash
+for log_file in $source_dir/*.log; do
+    if grep -q 'error' \"\$log_file\"; then
+        filename=\$(basename \"\$log_file\")
+        cp \"\$log_file\" \"$destination_dir/\$filename\"
+        echo \"Copied \$filename to $destination_dir\"
+    fi
+done"
+echo "$copy_script" > log_copy_script.sh
+
+# Make the script executable
+chmod +x log_copy_script.sh
+
+# Run the script immediately
+./log_copy_script.sh
+
+# Inform the user that files containing 'error' have been copied
+echo -e "${GREEN}All files containing the 'error' keyword have been copied to the $destination_dir directory.${NC}"
+
+# Add separation lines
+echo "------------------------------------------------------------------------------------------------------------------"
+
+# Offer to schedule the script with cron
+echo -e "${BLUE}As an add-on, we would like to give you superpowers to schedule this task so that next time you don't need to run this script manually.${NC}"
+# Ask the user if they want to schedule the new script with cron
+read -p "Do you want to schedule the log_copy_script with cron for future runs? (yes/no): " schedule
+if [ "$schedule" == "yes" ]; then
+    # Prompt the user for cron scheduling information
+    read -p "Enter the minute (0-59): " minute
+    read -p "Enter the hour (0-23): " hour
+    read -p "Enter the day of the month (1-31): " day
+    read -p "Enter the month (1-12): " month
+    read -p "Enter the day of the week (0-7, where both 0 and 7 represent Sunday): " weekday
+
+    # Schedule the new script using cron
+    cron_expression="$minute $hour $day $month $weekday $(realpath log_copy_script.sh)"
+    (crontab -l ; echo "$cron_expression") | crontab -
+
+    echo "------------------------------------------------------------------------------------------------------------------"
+
+    echo "created script with name "log_copy_script" in current directory scheduled with cron."
+    echo "Here is the cron expression: $cron_expression"
+    echo -e "${BLUE}Let's enjoy the power of Automation.${NC}"
+fi
